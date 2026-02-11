@@ -158,6 +158,8 @@ module Forki
       login_form.fill_in("email", with: ENV["FACEBOOK_EMAIL"])
       login_form.fill_in("pass", with: ENV["FACEBOOK_PASSWORD"])
 
+      dismiss_cookie_consent
+
       # This is a pain because some pages just `click_button` would work, but some won't
       login_buttons = login_form.all("div", text: "Log In", wait: 5)
       login_buttons = login_form.all("div", text: "Log in", wait: 5) if login_buttons.empty?
@@ -192,6 +194,16 @@ module Forki
       first(:xpath, "//div[@aria-label='Your profile']").click
       first("span", text: "Log Out").click()
       @logged_in = false
+    end
+
+    def dismiss_cookie_consent
+      puts "looking for cookie accept modal"
+      find('div[aria-label="Allow all cookies"]').click()
+      puts "accepting cookies"
+      save_cookies
+    rescue Capybara::ElementNotFound
+      puts "no cookie warning"
+      # No cookie consent modal shown, continue
     end
 
     # Ensures that a valid Facebook url has been provided, and that it points to an available post

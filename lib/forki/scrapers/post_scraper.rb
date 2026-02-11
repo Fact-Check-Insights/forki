@@ -792,6 +792,7 @@ module Forki
         # login
         validate_and_load_page(url)
         sleep(10)
+        dismiss_cookie_consent
         graphql_strings = find_graphql_data_strings(page.html)
 
         begin
