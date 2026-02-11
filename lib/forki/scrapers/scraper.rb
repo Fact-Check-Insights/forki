@@ -126,7 +126,7 @@ module Forki
         login_form = first(id: "login_form", wait: 5)
       rescue Capybara::ElementNotFound
         begin
-          login_form = find(:xpath, '//form[@data-testid="royal_login_form"]')
+          login_form = find(:xpath, '//form[@data-testid="royal_login_form"]', wait: 10)
         rescue Capybara::ElementNotFound
           return unless page.title.downcase.include?("facebook - log in")
         end
@@ -142,7 +142,7 @@ module Forki
           login_form = first(id: "login_form", wait: 5)
         rescue Capybara::ElementNotFound
           begin
-            login_form = find(:xpath, '//form[@data-testid="royal_login_form"]')
+            login_form = find(:xpath, '//form[@data-testid="royal_login_form"]', wait: 10)
           rescue Capybara::ElementNotFound
             return unless page.title.downcase.include?("facebook - log in")
           end
@@ -198,7 +198,7 @@ module Forki
 
     def dismiss_cookie_consent
       puts "looking for cookie accept modal"
-      find('div[aria-label="Allow all cookies"]').click()
+      find('div[aria-label="Allow all cookies"]', wait: 10).click()
       puts "accepting cookies"
       save_cookies
     rescue Capybara::ElementNotFound
