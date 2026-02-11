@@ -75,7 +75,7 @@ module Forki
         number_of_followers: number_of_followers,
         name: profile_header_obj["user"]["name"],
         verified: profile_header_obj["user"]["is_verified"],
-        profile: profile_intro_obj ? profile_intro_obj["profile_intro_card"]["bio"]["text"] : "",
+        profile: profile_intro_obj&.dig("profile_intro_card", "bio", "text") || "",
         profile_image_url: profile_header_obj["user"]["profilePicLarge"]["uri"],
         number_of_likes: find_number_of_likes(profile_header_str),
       }
