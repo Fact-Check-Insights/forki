@@ -191,7 +191,7 @@ module Forki
     end
 
     def logout
-      first(:xpath, "//div[@aria-label='Your profile']").click
+      first(:xpath, "//div[@aria-label='Your profile' or @aria-label='Your Profile']").click
       first("span", text: /log out/i).click()
       @logged_in = false
     end
