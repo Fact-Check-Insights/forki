@@ -6,6 +6,8 @@ class VideoSieveWatchTab < VideoSieve
     video_object = self.extractor(graphql_objects)
     return false if video_object.nil?
 
+    return false if video_object.has_key?("short_form_video_context")
+
     video_object = video_object["attachments"]
     return false if video_object.nil?
 
