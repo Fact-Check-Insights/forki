@@ -68,7 +68,7 @@ class VideoSieveReel < VideoSieve
       created_at: JSON.parse(feedback_object["tracking"])["page_insights"].first[1]["post_context"]["publish_time"], # Yea, this is weird
       profile_link: video_object["short_form_video_context"]["video_owner"]["url"],
       has_video: true,
-      video_preview_image_files: video_preview_image_url.map { |url| Forki.retrieve_media(url) },
+      video_preview_image_files: video_preview_image_urls.map { |url| Forki.retrieve_media(url) },
       video_files: [Forki.retrieve_media(video_url)],
       reactions: nil # Only available on comments it seems? Look into this again sometime
     }

@@ -20,4 +20,9 @@ module Minitest::Assertions
   def assert_not_nil(object)
     assert object.nil? == false, "Expected a non-nil object but received nil"
   end
+
+  # Fails unless +object+ is falsy.
+  def assert_not(object, message = nil)
+    refute object, message
+  end
 end
