@@ -343,9 +343,6 @@ module Forki
 
       graphql_object_array = graphql_strings.map { |graphql_string| JSON.parse(graphql_string) }
 
-      # Once in awhile it's really easy
-      video_object = graphql_object_array.filter { |go| go.has_key?("video") }
-
       if VideoSieve.can_process_with_sieve?(graphql_object_array)
         # Eventually all of this complexity will be replaced with this
         return VideoSieve.sieve_for_graphql_objects(graphql_object_array)
@@ -360,7 +357,7 @@ module Forki
         media_object = story_node_object["comet_sections"]["content"]["story"]["attachments"].first["styles"]["attachment"]
         if media_object.has_key?("video")
           video_object = story_node_object["comet_sections"]["content"]["story"]["attachments"].first["styles"]["attachment"]["media"]["video"]
-        elsif media_object.has_key?("media") && (media_object["media"].has_key?("browser_native_sd_url") || media_object["media"].has_key?("videoDeliveryLegacyFields"))
+        elsif media_object.has_key?("media") && (media_object["media"].has_key?("browser_native_sd_url") || media_object["media"].has_key?("videoDeliveryLegacyFields") || media_object["media"].has_key?("videoDeliveryResponseFragment"))
           video_object = media_object["media"]
         end
 
@@ -423,14 +420,14 @@ module Forki
         view_count = feedback_object["video_view_count"]
         reshare_warning = feedback_object["should_show_reshare_warning"]
       else
-        if feedback_object["feedback"].key?("comment_count")
+        if feedback_object.dig("feedback", "comment_count")
           num_comments = feedback_object["feedback"]["comment_count"]["total_count"]
-        else
+        elsif feedback_object.dig("feedback", "total_comment_count")
           num_comments = feedback_object["feedback"]["total_comment_count"]
         end
 
-        view_count = feedback_object["comet_ufi_summary_and_actions_renderer"]["feedback"]["video_view_count"]
-        reshare_warning = feedback_object["comet_ufi_summary_and_actions_renderer"]["feedback"]["should_show_reshare_warning"]
+        view_count = feedback_object["video_view_count"]
+        reshare_warning = feedback_object["should_show_reshare_warning"]
       end
 
       # This is a bit of a mess, mostly because of the different ways Facebook structures its video objects, especially
