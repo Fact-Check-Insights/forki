@@ -22,6 +22,7 @@ module Forki
       raise ContentUnavailableError unless is_post_available?
 
       graphql_objects = get_graphql_objects(graphql_strings)
+      graphql_objects = prioritize_dialog_node(graphql_objects)
       post_is_text_only = check_if_post_is_text_only(graphql_objects)
       post_has_video = check_if_post_is_video(graphql_objects)
       post_has_image = check_if_post_is_image(graphql_objects)
@@ -49,6 +50,25 @@ module Forki
 
     def get_graphql_objects(graphql_strings)
       graphql_strings.map { |graphql_object| JSON.parse(graphql_object) }
+    end
+
+    # When a permalink.php URL loads the post in a dialog over the news feed,
+    # the target post's GraphQL data appears under "node_v2" instead of "node".
+    # This normalizes it to "node" and prepends it so all existing extraction
+    # methods find the correct post instead of a random feed item.
+    def prioritize_dialog_node(graphql_objects)
+      return graphql_objects unless has_post_dialog?
+
+      v2_obj = graphql_objects.find { |go| go.key?("node_v2") }
+      return graphql_objects if v2_obj.nil?
+
+      [{ "node" => v2_obj["node_v2"] }] + graphql_objects
+    end
+
+    def has_post_dialog?
+      !first('[role="dialog"]', wait: 3).nil?
+    rescue StandardError
+      false
     end
 
     def check_if_post_is_text_only(graphql_objects)
@@ -202,7 +222,10 @@ module Forki
         end
 
         id = graphql_object["node"]["post_id"]
-        num_comments = feedback_object["comments_count_summary_renderer"]["feedback"]["comment_rendering_instance"]["comments"]["total_count"]
+        num_comments = feedback_object.dig("comments_count_summary_renderer", "feedback", "comment_rendering_instance", "comments", "total_count")
+        num_comments ||= feedback_object.dig("comments_count_summary_renderer", "feedback", "total_comment_count")
+        num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "comment_count", "total_count")
+        num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "total_comment_count")
         reshare_warning = feedback_object["should_show_reshare_warning"]
         share_count_object = feedback_object.fetch("share_count", {})
         num_shares = share_count_object.fetch("count", nil)
@@ -263,7 +286,10 @@ module Forki
         end
 
         id = graphql_object["node"]["post_id"]
-        num_comments = feedback_object["comments_count_summary_renderer"]["feedback"]["comment_rendering_instance"]["comments"]["total_count"]
+        num_comments = feedback_object.dig("comments_count_summary_renderer", "feedback", "comment_rendering_instance", "comments", "total_count")
+        num_comments ||= feedback_object.dig("comments_count_summary_renderer", "feedback", "total_comment_count")
+        num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "comment_count", "total_count")
+        num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "total_comment_count")
         reshare_warning = feedback_object["should_show_reshare_warning"]
         share_count_object = feedback_object.fetch("share_count", {})
         num_shares = share_count_object.fetch("count", nil)
@@ -510,11 +536,10 @@ module Forki
 
       share_count_object = feedback_object.fetch("share_count", {})
 
-      if feedback_object["comments_count_summary_renderer"]["feedback"].has_key?("comment_rendering_instance")
-        num_comments = feedback_object["comments_count_summary_renderer"]["feedback"]["comment_rendering_instance"]["comments"]["total_count"]
-      else
-        num_comments = feedback_object["comments_count_summary_renderer"]["feedback"]["total_comment_count"]
-      end
+      num_comments = feedback_object.dig("comments_count_summary_renderer", "feedback", "comment_rendering_instance", "comments", "total_count")
+      num_comments ||= feedback_object.dig("comments_count_summary_renderer", "feedback", "total_comment_count")
+      num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "comment_count", "total_count")
+      num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "total_comment_count")
 
       text = sidepane_object["tahoe_sidepane_renderer"]["video"]["creation_story"]["comet_sections"].dig("message", "story", "message", "text")
       text = "" if text.nil?
@@ -579,7 +604,10 @@ module Forki
         end
 
         id = graphql_object["node"]["post_id"]
-        num_comments = feedback_object["comments_count_summary_renderer"]["feedback"]["comment_rendering_instance"]["comments"]["total_count"]
+        num_comments = feedback_object.dig("comments_count_summary_renderer", "feedback", "comment_rendering_instance", "comments", "total_count")
+        num_comments ||= feedback_object.dig("comments_count_summary_renderer", "feedback", "total_comment_count")
+        num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "comment_count", "total_count")
+        num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "total_comment_count")
         reshare_warning = feedback_object["should_show_reshare_warning"]
 
         if attachments.count.positive? && attachments.first["styles"]["attachment"]&.key?("all_subattachments")
@@ -642,10 +670,10 @@ module Forki
 
         id = curr_media_object["currMedia"]["id"],
 
-        num_comments = feedback_object["comments_count_summary_renderer"]["feedback"]["total_comment_count"],
-        if num_comments.nil? && feedback_object.has_key?("comments_count_summary_renderer")
-          num_comments = feedback_object["comments_count_summary_renderer"]["feedback"]["comment_rendering_instance"]["comments"]["total_count"]
-        end
+        num_comments = feedback_object.dig("comments_count_summary_renderer", "feedback", "comment_rendering_instance", "comments", "total_count")
+        num_comments ||= feedback_object.dig("comments_count_summary_renderer", "feedback", "total_comment_count")
+        num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "comment_count", "total_count")
+        num_comments ||= feedback_object.dig("comment_list_renderer", "feedback", "total_comment_count")
 
         num_shares = share_count_object.fetch("count", nil)
         reshare_warning = feedback_object["should_show_reshare_warning"]
