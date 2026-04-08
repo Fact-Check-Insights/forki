@@ -851,7 +851,12 @@ module Forki
       end
 
       # page.quit # Close browser between page navigation to prevent cache folder access issues
-      post_data[:user] = (post_data[:profile_link].nil? || post_data[:profile_link].empty?) ? nil : User.lookup(post_data[:profile_link])&.first
+      begin
+        post_data[:user] = (post_data[:profile_link].nil? || post_data[:profile_link].empty?) ? nil : User.lookup(post_data[:profile_link])&.first
+      rescue StandardError => e
+        puts "Error scraping user profile: #{e.message}"
+        post_data[:user] = nil
+      end
       logout if self.logged_in
       page.quit
 
