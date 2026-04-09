@@ -160,28 +160,18 @@ module Forki
 
       dismiss_cookie_consent
 
-      # This is a pain because some pages just `click_button` would work, but some won't
-      login_buttons = login_form.all("div", text: "Log In", wait: 5)
-      login_buttons = login_form.all("div", text: "Log in", wait: 5) if login_buttons.empty?
-
-      if login_buttons.empty?
-        begin
-          login_form.click_button("Log in")
-        rescue Capybara::ElementNotFound
-          login_form.click_button("Log In")
-        end
-      else
-        login_buttons.each do |button|
-          if button.text == "Log In" || button.text == "Log in"
-            button.click
-            break
-          end
-        end
-      end
+      # Submit the login form — use send_keys(:return) to avoid click interception
+      # from cookie consent overlays or other modals
+      login_form.find_field("pass").send_keys(:return)
 
       begin
         raise Forki::BlockedCredentialsError if find_by_id("error_box", wait: 3)
       rescue Capybara::ElementNotFound; end
+
+      if current_url.include?("two_step_verification")
+        puts "Two-step verification detected, waiting 60 seconds..."
+        sleep(60)
+      end
 
       # Now we wait awhile, hopefully to slow down scraping
       @logged_in = true
