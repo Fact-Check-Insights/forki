@@ -857,6 +857,7 @@ module Forki
         puts "Error scraping user profile: #{e.message}"
         post_data[:user] = nil
       end
+      logout if self.logged_in
       page.quit
 
       post_data

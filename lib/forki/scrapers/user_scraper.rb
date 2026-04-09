@@ -105,6 +105,7 @@ module Forki
       # So some reels may actually link to an instagram user?
       if url.include?("instagram.com")
         user = get_instagram_user(url)
+        logout if self.logged_in
 
         return user
       end
@@ -117,6 +118,8 @@ module Forki
 
       user_details[:profile_image_file] = Forki.retrieve_media(user_details[:profile_image_url])
       user_details[:profile_link] = url
+
+      logout if self.logged_in
 
       user_details
     end
