@@ -21,7 +21,6 @@ options.add_preference "credentials_enable_service", false
 options.add_preference "profile.default_content_setting_values.notifications", 2
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--remote-debugging-port=9222")
-options.add_argument("--user-data-dir=/tmp/tarun_forki_#{SecureRandom.uuid}")
 
 Capybara.register_driver :selenium_forki do |app|
   client = Selenium::WebDriver::Remote::Http::Curb.new
@@ -42,7 +41,6 @@ module Forki
       Capybara.default_driver = :selenium_forki
       Forki.set_logger_level
       @logged_in = false
-      # reset_selenium
     end
 
     # Yeah, just use the tmp/ directory that's created during setup
@@ -86,30 +84,6 @@ module Forki
 
   private
 
-    ##########
-    # Set the session to use a new user folder in the options!
-    # #####################
-    def reset_selenium
-      options = Selenium::WebDriver::Options.chrome(exclude_switches: ["enable-automation"])
-      options.add_argument("--start-maximized")
-      options.add_argument("--no-sandbox")
-      options.add_argument("--disable-dev-shm-usage")
-      options.add_argument("–-disable-blink-features=AutomationControlled")
-      options.add_argument("--disable-extensions")
-      options.add_argument("user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36")
-      options.add_preference "password_manager_enabled", false
-      options.add_argument("--disable-dev-shm-usage")
-      options.add_argument("--remote-debugging-port=9222")
-      options.add_argument("--user-data-dir=/tmp/tarun_forki_#{SecureRandom.uuid}")
-
-      Capybara.register_driver :selenium_forki do |app|
-        client = Selenium::WebDriver::Remote::Http::Curb.new
-        # client.read_timeout = 60  # Don't wait 60 seconds to return Net::ReadTimeoutError. We'll retry through Hypatia after 10 seconds
-        Capybara::Selenium::Driver.new(app, browser: :chrome, options: options, http_client: client)
-      end
-
-      Capybara.current_driver = :selenium_forki
-    end
 
     # Logs in to Facebook (if not already logged in)
     def login(url = nil)
