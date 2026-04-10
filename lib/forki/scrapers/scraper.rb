@@ -21,6 +21,8 @@ options.add_preference "credentials_enable_service", false
 options.add_preference "profile.default_content_setting_values.notifications", 2
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--remote-debugging-port=9222")
+chrome_profile = ENV["CHROME_USER_DATA_DIR"]
+options.add_argument("--user-data-dir=#{chrome_profile}") if chrome_profile
 
 Capybara.register_driver :selenium_forki do |app|
   client = Selenium::WebDriver::Remote::Http::Curb.new
