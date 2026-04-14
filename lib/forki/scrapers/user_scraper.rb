@@ -119,6 +119,12 @@ module Forki
       user_details[:profile_link] = url
 
       user_details
+    ensure
+      begin
+        page.quit
+      rescue StandardError => e
+        puts "Error closing browser: #{e}"
+      end
     end
 
     def get_instagram_user(url)
