@@ -524,7 +524,7 @@ module Forki
       sidepane_object = graphql_object_array.find { |graphql_object| graphql_object.key?("tahoe_sidepane_renderer") }
       video_object = graphql_object_array.find { |graphql_object| graphql_object.has_key?("video") }
 
-      raise Forki::ContentUnavailableError if sidepane_object.nil? && video_object.nil?
+      raise Forki::ContentUnavailableError if sidepane_object.nil? || video_object.nil?
 
       feedback_object = sidepane_object["tahoe_sidepane_renderer"]["video"]["feedback"]
 
