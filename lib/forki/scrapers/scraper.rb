@@ -93,6 +93,10 @@ module Forki
 
       url ||= "https://www.facebook.com"
 
+      # Cookies can only be added while the browser is already on a page of the
+      # cookie's domain. Land on Facebook first so the saved session actually
+      # restores, then continue to the page we want.
+      page.driver.browser.navigate.to("https://www.facebook.com")
       load_saved_cookies
 
       page.driver.browser.navigate.to(url)  # Visit the url passed in or the facebook homepage if nothing is
@@ -172,6 +176,24 @@ module Forki
       # No cookie consent modal shown, continue
     end
 
+    # Returns true when Facebook is showing a login wall instead of the page we
+    # asked for. This is detected three ways: a redirect to a /login URL, the
+    # logged-out "This content isn't available right now" interstitial, or a
+    # bare login form on the page. None of these mean the post was removed.
+    def login_wall_present?
+      return true if current_url.match?(%r{//[^/]*facebook\.com/login(?:[/.?]|$)}i)
+
+      begin
+        return true unless find("span", text: "This content isn't available right now", wait: 2).nil?
+      rescue Capybara::ElementNotFound, Selenium::WebDriver::Error::StaleElementReferenceError
+        # interstitial not shown — fall through to the login-form check
+      end
+
+      !first(id: "login_form", wait: 1).nil?
+    rescue StandardError
+      false
+    end
+
     # Ensures that a valid Facebook url has been provided, and that it points to an available post
     # If either of those two conditions are false, raises an exception
     def validate_and_load_page(url)
@@ -201,17 +223,13 @@ module Forki
 
       visit url # unless current_url.start_with?(url)
 
-      # Let's check if we need to try to login first
-      begin
-        content_unavailable_flag = !find("span", text: "This content isn't available right now", wait: 2).nil?
-      rescue Capybara::ElementNotFound, Selenium::WebDriver::Error::StaleElementReferenceError
-        content_unavailable_flag = false
-      end
-
-      if content_unavailable_flag
-        visit("https://www.facebook.com")
-        login if !logged_in
-      end # Find and close a dialog if possible, aria-label="Close"
+      # Facebook hides posts from logged-out scrapers in two ways: it redirects
+      # the request to a /login URL, or it renders a "This content isn't
+      # available right now" interstitial (sometimes with a bare login form).
+      # None of these mean the post was removed, so authenticate and retry
+      # instead of letting extraction fail later with a misleading
+      # ContentUnavailableError.
+      login if !logged_in && login_wall_present?
 
       visit(url) # I have no idea why this is out here, but it has to be otherwise looking up a user after a log out fails
       # This isn't strictly necessary since we're already looking up a post first, but for testing... yeah
@@ -263,6 +281,10 @@ module Forki
       File.write("forki_cookies.json", cookies_json)
     end
 
+    # Restores a previously saved Facebook session. The browser must already be
+    # on a Facebook page when this runs — Selenium rejects add_cookie calls
+    # whose domain doesn't match the current page. The caller navigates
+    # afterwards, which is what makes the restored cookies take effect.
     def load_saved_cookies
       return unless File.exist?("forki_cookies.json")
 
@@ -271,15 +293,11 @@ module Forki
       cookies.each do |cookie|
         cookie[:expires] = Time.parse(cookie[:expires]) unless cookie[:expires].nil?
         begin
-          puts "Loading coookies..."
           page.driver.browser.manage.add_cookie(cookie)
-
         rescue StandardError => e
-          puts "Error loading cookies: #{e}"
+          puts "Error loading cookie #{cookie[:name]}: #{e}"
         end
       end
-      puts "Refreshing page..."
-      page.driver.browser.navigate.refresh
     end
   end
 end

@@ -41,6 +41,17 @@ module Forki
     end
   end
 
+  # Raised when a post's page loaded but Forki could not locate the data it
+  # needs in the embedded GraphQL. Unlike ContentUnavailableError this does NOT
+  # mean the post was removed — it usually signals a Facebook layout change or a
+  # post shape Forki doesn't handle yet, and should be investigated rather than
+  # treated as a missing post.
+  class PostExtractionError < StandardError
+    def initialize(msg = "Forki loaded the post but could not extract its data")
+      super
+    end
+  end
+
   class MissingCredentialsError < StandardError
     def initalize(msg = "Missing FACEBOOK_EMAIL or FACEBOOK_PASSWORD environment variable")
       super

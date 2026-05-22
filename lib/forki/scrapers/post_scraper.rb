@@ -524,7 +524,7 @@ module Forki
       sidepane_object = graphql_object_array.find { |graphql_object| graphql_object.key?("tahoe_sidepane_renderer") }
       video_object = graphql_object_array.find { |graphql_object| graphql_object.has_key?("video") }
 
-      raise Forki::ContentUnavailableError if sidepane_object.nil? || video_object.nil?
+      raise Forki::PostExtractionError, "video post: tahoe_sidepane_renderer/video object missing from GraphQL" if sidepane_object.nil? || video_object.nil?
 
       feedback_object = sidepane_object["tahoe_sidepane_renderer"]["video"]["feedback"]
 
@@ -645,7 +645,7 @@ module Forki
       else
         graphql_object_array.find { |graphql_object| graphql_object.key?("viewer_actor") && graphql_object.key?("display_comments") }
         curr_media_object = graphql_object_array.find { |graphql_object| graphql_object.key?("currMedia") }
-        raise Forki::ContentUnavailableError if curr_media_object.nil?
+        raise Forki::PostExtractionError, "image post: currMedia object missing from GraphQL" if curr_media_object.nil?
 
         creation_story_object = graphql_object_array.find { |graphql_object| graphql_object.key?("creation_story") && graphql_object.key?("message") }
 
@@ -831,11 +831,10 @@ module Forki
 
     # Uses GraphQL data and DOM elements to collect information about the current post
     def parse(url)
-      post_data = {}
-
       # Occasionally there will be a post that's public, but an account isn't and you need to login first
       post_data = nil
       graphql_strings = []
+      extraction_error = nil
       2.times do |i|
         # login
         validate_and_load_page(url)
@@ -853,16 +852,21 @@ module Forki
           end
 
           break unless post_data[:profile_link].respond_to?(:empty?) ? post_data[:profile_link].empty? : !post_data[:profile_link]
-        rescue Forki::ContentUnavailableError; end
+        rescue Forki::ContentUnavailableError, Forki::PostExtractionError => e
+          extraction_error = e
+        end
 
         login if i.zero?
       end
 
-      begin
-        post_data[:url] = url
-      rescue StandardError
-        raise ContentUnavailableError
-      end
+      # Both attempts failed to produce a post. Re-raise the actual reason — a
+      # genuine removal (ContentUnavailableError) or a failure to parse the page
+      # (PostExtractionError) — instead of masking every failure as a removed
+      # post, which made false positives impossible to tell apart from real ones.
+      raise extraction_error if post_data.nil? && extraction_error
+      raise Forki::ContentUnavailableError if post_data.nil?
+
+      post_data[:url] = url
 
       5.times do
         begin
