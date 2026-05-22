@@ -807,12 +807,35 @@ module Forki
       end
     end
 
+    # Pulls the post author's actor object straight out of the GraphQL data.
+    # Every post embeds an actor carrying at least a name and id, even when
+    # its URL is missing or points to a group-scoped profile that the user
+    # scraper can't load. Returns the actor hash, or nil if none is found.
+    def find_post_actor(graphql_strings)
+      graphql_strings.each do |raw|
+        next unless raw.include?("\"actors\"")
+
+        begin
+          graphql_object = JSON.parse(raw)
+        rescue JSON::ParserError
+          next
+        end
+
+        actor = graphql_object.dig("node", "comet_sections", "content", "story", "actors")&.first
+        actor ||= graphql_object.dig("node", "comet_sections", "context_layout", "story", "comet_sections", "actor_photo", "story", "actors")&.first
+        return actor if actor.is_a?(Hash) && (actor["name"] || actor["id"])
+      end
+
+      nil
+    end
+
     # Uses GraphQL data and DOM elements to collect information about the current post
     def parse(url)
       post_data = {}
 
       # Occasionally there will be a post that's public, but an account isn't and you need to login first
       post_data = nil
+      graphql_strings = []
       2.times do |i|
         # login
         validate_and_load_page(url)
@@ -857,6 +880,16 @@ module Forki
         puts "Error scraping user profile: #{e.message}"
         post_data[:user] = nil
       end
+
+      # Group posts (and some others) don't always resolve to a scrapable
+      # profile page, so the lookup above can come back empty. Fall back to the
+      # actor embedded in the post itself so callers still get the poster's
+      # name and id instead of a nil user.
+      if post_data[:user].nil?
+        post_data[:user] = User.from_actor(find_post_actor(graphql_strings))
+        puts "Using post actor as fallback user: #{post_data[:user].name}" unless post_data[:user].nil?
+      end
+
       page.quit
 
       post_data

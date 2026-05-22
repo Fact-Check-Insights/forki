@@ -7,6 +7,29 @@ module Forki
       self.scrape(urls)
     end
 
+    # Builds a User from the actor data embedded in a post's GraphQL.
+    # Used as a fallback when the poster's profile page can't be scraped
+    # (for instance group posts, whose actor URL doesn't resolve to a
+    # standard profile). Only the fields present in the post are populated.
+    #
+    # @param actor [Hash, nil] the actor object lifted from a post
+    # @return [Forki::User, nil] a partial user, or nil if there's no actor
+    def self.from_actor(actor)
+      return nil unless actor.is_a?(Hash)
+      return nil if actor["name"].nil? && actor["id"].nil?
+
+      # Group posts often expose the actor without a URL. The numeric id is
+      # itself a valid canonical profile URL, so derive one when it's missing.
+      profile_link = actor["url"]
+      profile_link ||= "https://www.facebook.com/#{actor["id"]}" unless actor["id"].nil?
+
+      new(
+        name: actor["name"],
+        id: actor["id"],
+        profile_link: profile_link
+      )
+    end
+
     attr_reader :name,
                 :id,
                 :number_of_followers,
